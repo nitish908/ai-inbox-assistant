@@ -3,9 +3,8 @@ const bodyParser = require("body-parser");
 const axios = require("axios");
 
 const app = express();
-const port = 10000;
+const port = process.env.PORT || 10000; // ✅ Use Render's dynamic port
 
-// Middleware
 app.use(bodyParser.json());
 
 // Endpoint to summarize email content using AI/ML API
@@ -17,11 +16,11 @@ app.post("/summarize", async (req, res) => {
       return res.status(400).json({ error: "Email content is required" });
     }
 
-    // Use the AIML API to summarize the email content
+    // Call AIML API
     const response = await axios.post(
-      "https://api.aimlapi.com/v1/chat/completions", // AI/ML API endpoint
+      "https://api.aimlapi.com/v1/chat/completions",
       {
-        model: "gpt-4o", // Change this to your chosen model
+        model: "gpt-4o",
         messages: [
           {
             role: "user",
@@ -31,35 +30,16 @@ app.post("/summarize", async (req, res) => {
       },
       {
         headers: {
-          "Authorization": `Bearer ${process.env.AIML_API_KEY}`,
+          Authorization: `Bearer ${process.env.AIML_API_KEY}`,
         },
       }
     );
 
-    if (response.data && response.data.choices && response.data.choices[0].message) {
-      const summary = response.data.choices[0].message.content;
-      res.json({ summary });
-    } else {
-      throw new Error("Unexpected response from AIML API");
-    }
+    const summary = response.data.choices[0].message.content;
+    res.json({ summary });
   } catch (error) {
-    // Enhanced error handling with more specific info
-    console.error("OpenAI error:", error.response?.data || error.message);
-
-    if (error.response) {
-      // Log detailed error response from the API
-      console.error("Error response data:", error.response.data);
-      res.status(500).json({
-        error: "Something went wrong with the AI/ML API",
-        details: error.response.data,
-      });
-    } else {
-      // Log any other error (e.g., network error, etc.)
-      res.status(500).json({
-        error: "Something went wrong with the AI/ML API",
-        details: error.message,
-      });
-    }
+    console.error("AI/ML API error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Something went wrong with OpenAI" });
   }
 });
 
@@ -70,6 +50,5 @@ app.get("/health", (req, res) => {
 
 // Start the server
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log("Your server is live 🎉"); // Confirmation message when the server is running
+  console.log(`✅ Your server is live on port ${port}`);
 });

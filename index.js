@@ -1,4 +1,3 @@
-require("dotenv").config(); // To load environment variables from the .env file
 const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
@@ -37,12 +36,30 @@ app.post("/summarize", async (req, res) => {
       }
     );
 
-    const summary = response.data.choices[0].message.content;
-
-    res.json({ summary });
+    if (response.data && response.data.choices && response.data.choices[0].message) {
+      const summary = response.data.choices[0].message.content;
+      res.json({ summary });
+    } else {
+      throw new Error("Unexpected response from AIML API");
+    }
   } catch (error) {
+    // Enhanced error handling with more specific info
     console.error("OpenAI error:", error.response?.data || error.message);
-    res.status(500).json({ error: "Something went wrong with the AI/ML API" });
+
+    if (error.response) {
+      // Log detailed error response from the API
+      console.error("Error response data:", error.response.data);
+      res.status(500).json({
+        error: "Something went wrong with the AI/ML API",
+        details: error.response.data,
+      });
+    } else {
+      // Log any other error (e.g., network error, etc.)
+      res.status(500).json({
+        error: "Something went wrong with the AI/ML API",
+        details: error.message,
+      });
+    }
   }
 });
 
@@ -54,4 +71,5 @@ app.get("/health", (req, res) => {
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  console.log("Your server is live 🎉"); // Confirmation message when the server is running
 });

@@ -1,47 +1,57 @@
+require("dotenv").config(); // To load environment variables from the .env file
 const express = require("express");
-const cors = require("cors");
 const bodyParser = require("body-parser");
-const OpenAI = require("openai");
+const axios = require("axios");
 
 const app = express();
-app.use(cors());
+const port = 10000;
+
+// Middleware
 app.use(bodyParser.json());
 
-// Initialize OpenAI with API Key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, // Set this in Render's Environment Variables
-});
-
-app.get("/", (req, res) => {
-  res.send("✅ AI Inbox API is running");
-});
-
+// Endpoint to summarize email content using AI/ML API
 app.post("/summarize", async (req, res) => {
-  const { emailContent } = req.body;
-
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "Summarize this email in 1-2 sentences.",
-        },
-        {
-          role: "user",
-          content: emailContent,
-        },
-      ],
-    });
+    const emailContent = req.body.emailContent;
 
-    res.json({ summary: response.choices[0].message.content.trim() });
-  } catch (err) {
-    console.error("OpenAI error:", err);
-    res.status(500).json({ error: "Something went wrong with OpenAI" });
+    if (!emailContent) {
+      return res.status(400).json({ error: "Email content is required" });
+    }
+
+    // Use the AIML API to summarize the email content
+    const response = await axios.post(
+      "https://api.aimlapi.com/v1/chat/completions", // AI/ML API endpoint
+      {
+        model: "gpt-4o", // Change this to your chosen model
+        messages: [
+          {
+            role: "user",
+            content: `Summarize this email content: ${emailContent}`,
+          },
+        ],
+      },
+      {
+        headers: {
+          "Authorization": `Bearer ${process.env.AIML_API_KEY}`,
+        },
+      }
+    );
+
+    const summary = response.data.choices[0].message.content;
+
+    res.json({ summary });
+  } catch (error) {
+    console.error("OpenAI error:", error.response?.data || error.message);
+    res.status(500).json({ error: "Something went wrong with the AI/ML API" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+// Health check route (for Render)
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
